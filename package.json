@@ -17,7 +17,9 @@
     "lint:fix": "bunx eslint plugins/statusline/src/**/*.ts plugins/statusline/hooks/**/*.ts --fix",
     "typecheck": "bunx tsc --noEmit",
     "format": "bunx prettier --write .",
-    "format:check": "bunx prettier --check ."
+    "format:check": "bunx prettier --check .",
+    "install:statusline": "node plugins/statusline/scripts/install-statusline.mjs",
+    "test:statusline": "node plugins/statusline/scripts/statusline.mjs"
   },
   "dependencies": {},
   "devDependencies": {
