@@ -1,7 +1,7 @@
 {
   "name": "statusline",
-  "version": "0.6.0",
-  "description": "Advanced statusline plugin for Claude Code with git branch, path, token context, and progress bar - Enhanced git display, model version, and improved progress bar",
+  "version": "0.6.2",
+  "description": "Advanced statusline plugin for Claude Code - Real-time token tracking, session duration, enhanced git display with model version",
   "author": {
     "name": "Yanis"
   },

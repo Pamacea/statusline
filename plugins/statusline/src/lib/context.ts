@@ -22,6 +22,7 @@ export interface TranscriptLine {
 export interface ContextResult {
   tokens: number;
   percentage: number;
+  durationMs?: number;  // Session duration in milliseconds
 }
 
 export interface ContextDataParams {
@@ -30,6 +31,53 @@ export interface ContextDataParams {
   autocompactBufferTokens: number;
   useUsableContextOnly?: boolean;
   overheadTokens?: number;
+}
+
+/**
+ * Get session duration from transcript file
+ */
+export function getSessionDuration(transcriptPath: string): number {
+  if (!transcriptPath || !existsSync(transcriptPath)) {
+    return 0;
+  }
+
+  try {
+    const content = require("fs").readFileSync(transcriptPath, "utf-8");
+    const lines = content.trim().split("\n");
+
+    if (lines.length === 0) return 0;
+
+    let firstTimestamp: Date | null = null;
+    let lastTimestamp: Date | null = null;
+
+    for (const line of lines) {
+      try {
+        const data = JSON.parse(line) as TranscriptLine;
+
+        if (!data.timestamp) continue;
+
+        const entryTime = new Date(data.timestamp);
+
+        if (!firstTimestamp || entryTime < firstTimestamp) {
+          firstTimestamp = entryTime;
+        }
+
+        if (!lastTimestamp || entryTime > lastTimestamp) {
+          lastTimestamp = entryTime;
+        }
+      } catch {
+        // Skip invalid lines
+      }
+    }
+
+    if (firstTimestamp && lastTimestamp) {
+      return lastTimestamp.getTime() - firstTimestamp.getTime();
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return 0;
 }
 
 /**
@@ -162,8 +210,9 @@ export function getContextDataSync({
     return {
       tokens: totalTokens,
       percentage: Math.round(percentage),
+      durationMs: getSessionDuration(transcriptPath),
     };
   } catch {
-    return { tokens: 0, percentage: 0 };
+    return { tokens: 0, percentage: 0, durationMs: 0 };
   }
 }

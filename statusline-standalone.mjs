@@ -80,13 +80,49 @@ function getCurrentSessionFile() {
 }
 
 /**
- * Read token usage from current session file
+ * Read session duration from current session file
  */
+function getSessionDuration(sessionFile) {
+  if (!sessionFile || !existsSync(sessionFile)) {
+    return 0;
+  }
+
+  try {
+    const content = readFileSync(sessionFile, 'utf-8');
+    const lines = content.trim().split('\n');
+
+    // Find first and last messages with timestamps
+    let firstTimestamp = null;
+    let lastTimestamp = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      try {
+        const parsed = JSON.parse(lines[i]);
+        if (parsed.timestamp) {
+          if (!firstTimestamp) {
+            firstTimestamp = new Date(parsed.timestamp).getTime();
+          }
+          lastTimestamp = new Date(parsed.timestamp).getTime();
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (firstTimestamp && lastTimestamp) {
+      return lastTimestamp - firstTimestamp;
+    }
+  } catch {
+    // Ignore
+  }
+
+  return 0;
+}
 function getSessionTokens() {
   const sessionFile = getCurrentSessionFile();
 
   if (!sessionFile || !existsSync(sessionFile)) {
-    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5' };
+    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: 0 };
   }
 
   try {
@@ -109,7 +145,7 @@ function getSessionTokens() {
     }
 
     if (!lastData || !lastData.message?.usage) {
-      return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5' };
+      return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: getSessionDuration(sessionFile) };
     }
 
     const usage = lastData.message.usage;
@@ -130,10 +166,11 @@ function getSessionTokens() {
       current: totalTokens,
       max: CONFIG.maxTokens,
       cost: cost,
-      model: model
+      model: model,
+      duration: getSessionDuration(sessionFile)
     };
   } catch (error) {
-    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5' };
+    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: 0 };
   }
 }
 
@@ -264,6 +301,20 @@ function formatTokenCount(count) {
 }
 
 /**
+ * Format duration in ms to human readable
+ */
+function formatDuration(ms) {
+  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+
+  if (hours > 0) {
+    return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+  }
+  return `${mins}m`;
+}
+
+/**
  * Extract model version (e.g., "4.5" from "Claude Sonnet 4.5")
  */
 function extractModelVersion(modelName) {
@@ -347,12 +398,12 @@ function getProjectPath(gitInfo) {
 function main() {
   const gitInfo = getGitInfo();
   const sessionData = getSessionTokens();
-  const { current, max, cost, model } = sessionData;
+  const { current, max, cost, model, duration } = sessionData;
   const percentage = Math.min(100, Math.round((current / max) * 100));
 
   // Build statusline components
   const branch = gitInfo.branch || 'no-git';
-  const dirtyMarker = gitInfo.dirty ? COLORS.magenta + '*' + COLORS.reset : '';
+  const dirtyMarker = gitInfo.dirty ? `\x1b[95m*\x1b[0m` : '';
   const projectPath = getProjectPath(gitInfo);
   const progressBar = createProgressBar(percentage);
   const currentDisplay = formatTokenCount(current);
@@ -375,19 +426,25 @@ function main() {
     }
   }
 
+  // Duration display
+  const durationDisplay = duration > 0
+    ? `\x1b[90m${formatDuration(duration)}\x1b[0m`
+    : '';
+
   // Build final statusline on ONE line with better separators
-  // Format: Branch ▸ Path ▸ Git changes ▸ Progress ▸ Tokens ▸ Model ▸ Cost
+  // New order: Branch ▸ Path ▸ Git changes ▸ Model ▸ Cost ▸ Progress ▸ Tokens ▸ Duration
   const statusline =
     `\x1b[1m\x1b[97m${branch}${dirtyMarker}\x1b[0m` +
     ` \x1b[90m▸\x1b[0m ` +
     `\x1b[90m${projectPath}\x1b[0m` +
     gitChanges +
+    (modelDisplay ? ` \x1b[90m▸\x1b[0m ${modelDisplay}` : '') +
+    (costDisplay ? ` \x1b[90m▸\x1b[0m ${costDisplay}` : '') +
     ` \x1b[90m▸\x1b[0m ` +
     progressBar +
     ` \x1b[90m▸\x1b[0m ` +
     `\x1b[1m${percentage}% (${currentDisplay}/${maxDisplay})\x1b[0m` +
-    (modelDisplay ? ` \x1b[90m▸\x1b[0m ${modelDisplay}` : '') +
-    (costDisplay ? ` \x1b[90m▸\x1b[0m ${costDisplay}` : '');
+    (durationDisplay ? ` \x1b[90m▸\x1b[0m ${durationDisplay}` : '');
 
   // Output to stdout
   console.log(statusline);

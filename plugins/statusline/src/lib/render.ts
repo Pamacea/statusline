@@ -181,22 +181,7 @@ function formatSessionPart(
 
   const items: string[] = [];
 
-  if (config.cost.enabled) {
-    const formattedCost = formatCost(cost, config.cost.format);
-    items.push(`${colors.gray("$")}${colors.dimWhite(formattedCost)}`);
-  }
-
-  if (config.tokens.enabled) {
-    const formattedUsed = formatTokens(contextTokens, config.tokens.showDecimals);
-
-    if (config.tokens.showMax) {
-      const formattedMax = formatTokens(maxTokens, config.tokens.showDecimals);
-      items.push(`${formattedUsed}${colors.gray("/")}${formattedMax}`);
-    } else {
-      items.push(formattedUsed);
-    }
-  }
-
+  // Progress bar + percentage FIRST (changed order)
   if (config.percentage.enabled) {
     const pctParts: string[] = [];
 
@@ -214,7 +199,7 @@ function formatSessionPart(
 
     if (config.percentage.showValue) {
       pctParts.push(
-        `${colors.lightGray(contextPercentage.toString())}${colors.gray("%")}`,
+        `${colors.bold(colors.lightGray(contextPercentage.toString()))}${colors.gray("%")} ${colors.gray("(")}${formatTokens(contextTokens, config.tokens.showDecimals)}${colors.gray("/")}${formatTokens(maxTokens, config.tokens.showDecimals)}${colors.gray(")")}`,
       );
     }
 
@@ -223,8 +208,9 @@ function formatSessionPart(
     }
   }
 
-  if (config.duration.enabled) {
-    items.push(colors.gray(`(${formatDuration(durationMs)})`));
+  // Duration LAST (added at the end)
+  if (config.duration.enabled && durationMs > 0) {
+    items.push(colors.gray(formatDuration(durationMs)));
   }
 
   if (items.length === 0) return "";
@@ -233,7 +219,7 @@ function formatSessionPart(
     ? ` ${colors.gray(config.infoSeparator)} `
     : " ";
 
-  return `${colors.gray("S:")} ${items.join(sep)}`;
+  return items.join(sep);
 }
 
 function formatPacingDelta(delta: number): string {
@@ -434,12 +420,18 @@ export function renderStatuslineRaw(
   const pathPart = formatPath(data.path, config.pathDisplayMode);
   line1Parts.push(colors.gray(pathPart));
 
-  // Extract model version (e.g., "4.5" from "Claude Sonnet 4.5")
+  // Extract model version (e.g., "4.7" from "glm-4.7") - no "S:" prefix
   const modelVersion = extractModelVersion(data.modelName);
   if (modelVersion) {
-    line1Parts.push(colors.peach(`S: ${modelVersion}`));
+    line1Parts.push(colors.peach(modelVersion));
   } else if (config.showSonnetModel || !data.modelName.toLowerCase().includes("sonnet")) {
     line1Parts.push(colors.peach(data.modelName));
+  }
+
+  // Cost display
+  if (config.session.cost.enabled && data.cost > 0) {
+    const costStr = formatCost(data.cost, config.session.cost.format);
+    line1Parts.push(colors.green(costStr));
   }
 
   sections.push(line1Parts.join(` ${sep} `));
