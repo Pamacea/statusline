@@ -24,7 +24,7 @@
 ### Option 1: Marketplace Plugin (Recommended)
 
 ```bash
-claude plugin install claude-statusline
+claude plugin install statusline
 ```
 
 **Restart Claude Code completely** (not just reconnect).
@@ -57,7 +57,7 @@ Test that it's working:
 node ~/.claude/statusline.mjs
 
 # You should see colored output like:
-# main* ▸ claude-statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━] ▸ 65% (130K/200K) ▸ 2h11m
+# main* ▸ statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━] ▸ 65% (130K/200K) ▸ 2h11m
 ```
 
 ---
@@ -65,7 +65,7 @@ node ~/.claude/statusline.mjs
 ## Display Breakdown
 
 ```
-main* ▸ claude-statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━━━━━╸──────] ▸ 65% (130K/200K) ▸ 2h11m
+main* ▸ statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━━━━━╸──────] ▸ 65% (130K/200K) ▸ 2h11m
 │    │                   │                          │     │      │                    │
 │    │                   │                          │     │      │                    └─ Session duration
 │    │                   │                          │     │      └────────────────── Token usage (current/max)
@@ -278,7 +278,7 @@ Display everything on a single line:
 ```
 
 **Examples:**
-- `full`: `~/Projects/claude-statusline/src/lib`
+- `full`: `~/Projects/statusline/src/lib`
 - `truncated`: `…src/lib` (default)
 - `basename`: `lib`
 
@@ -305,7 +305,7 @@ Change the separator between sections:
 node ~/.claude/statusline.mjs
 
 # Marketplace plugin
-node ~/.claude/plugins/cache/claude-statusline/statusline/0.6.1/dist/index.js
+node ~/.claude/plugins/cache/statusline/statusline/0.6.1/dist/index.js
 ```
 
 **2. Check settings.json:**
@@ -417,8 +417,8 @@ A: Yes, it's designed to work alongside other Claude Code plugins.
 
 ## Support
 
-- **Issues:** [GitHub Issues](https://github.com/Pamacea/claude-statusline/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/Pamacea/claude-statusline/discussions)
+- **Issues:** [GitHub Issues](https://github.com/Pamacea/statusline/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/Pamacea/statusline/discussions)
 - **Documentation:** [README.md](README.md) | [CHANGELOG.md](CHANGELOG.md)
 
 ---

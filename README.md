@@ -6,14 +6,14 @@
 **Solution**: A persistent, colored statusline that updates in real-time at the top of your sessions.
 
 ```
-main* ▸ claude-statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━━━━━╸──────] ▸ 65% (130K/200K) ▸ 2h11m ▸ Vim ▸ C: 65.5%
+main* ▸ statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━━━━━╸──────] ▸ 65% (130K/200K) ▸ 2h11m ▸ Vim ▸ C: 65.5%
 ```
 
 ## Quick Start
 
 ```bash
 # Install from Claude Code marketplace
-claude plugin install claude-statusline
+claude plugin install statusline
 
 # Or use standalone script (no marketplace needed)
 cp statusline-standalone.mjs ~/.claude/statusline.mjs
@@ -34,13 +34,13 @@ cp statusline-standalone.mjs ~/.claude/statusline.mjs
 - **📈 Progress Bar** - Dynamic colors: green → yellow → orange → red
 - **🎨 Model Version** - Clean display: "4.7" instead of "glm-4.7"
 - **🔄 Vim Mode Indicator** - Shows "Vim" (green) when active, "Normal" (gray) when inactive
-- **💾 Cache Percentage** - Display cached tokens with progress bar (C: 65.5%)
+- **💾 Cache Percentage** - Percentage of input tokens served from cache (C: 45.2% = 45.2% cache hit rate)
 - **🖥️ Cross-Platform** - Windows, macOS, Linux with full Unicode support
 
 ## Display Breakdown
 
 ```
-main* ▸ claude-statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━] ▸ 65% ▸ 2h11m ▸ Vim ▸ C: 65.5%
+main* ▸ statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━] ▸ 65% ▸ 2h11m ▸ Vim ▸ C: 65.5%
 │    │                   │                          │     │      │     │       │      │
 │    │                   │                          │     │      │     │       │      └─ Cache percentage
 │    │                   │                          │     │      │     │       └────────── Vim mode
@@ -79,7 +79,7 @@ main* ▸ claude-statusline ▸ [1] +63 -21 [5] ▸ 4.7 ▸ $0.15 ▸ [━━━
 ### Option 1: Marketplace Plugin (Recommended)
 
 ```bash
-claude plugin install claude-statusline
+claude plugin install statusline
 ```
 
 ### Option 2: Standalone Script
@@ -164,6 +164,12 @@ Create `~/.claude/statusline.config.json` (optional):
 - **progressBar**: Progress bar configuration (length, style, color, background)
 - **colorThresholds**: Thresholds for color scaling (low: 30%, medium: 60%, high: 90%)
 
+**Understanding Cache Percentage:**
+- **Green (≥90%)**: Excellent cache hit rate - most tokens served from cache
+- **Yellow (≥60%)**: Moderate cache usage - some cache benefits
+- **Red (<60%)**: Low cache hit rate - minimal cache savings
+- **Example**: `C: 45.2%` means 45.2% of input tokens are cache hits (savings)
+
 ## License
 
-MIT © Yanis - [GitHub](https://github.com/Pamacea/claude-statusline)
+MIT © Yanis - [GitHub](https://github.com/Pamacea/statusline)

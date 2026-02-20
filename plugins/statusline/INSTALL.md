@@ -12,8 +12,8 @@
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yanis/claude-statusline.git
-cd claude-statusline
+git clone https://github.com/yanis/statusline.git
+cd statusline
 ```
 
 2. Install dependencies and build:
@@ -28,7 +28,7 @@ bun run build
   "plugins": {
     "statusline": {
       "enabled": true,
-      "path": "/path/to/claude-statusline"
+      "path": "/path/to/statusline"
     }
   }
 }
@@ -38,8 +38,8 @@ bun run build
 
 1. Clone and build:
 ```bash
-git clone https://github.com/yanis/claude-statusline.git
-cd claude-statusline
+git clone https://github.com/yanis/statusline.git
+cd statusline
 bun install
 bun run build
 ```
@@ -47,10 +47,10 @@ bun run build
 2. Create a symlink in Claude's plugin directory:
 ```bash
 # Linux/macOS
-ln -s /path/to/claude-statusline ~/.claude/plugins/statusline
+ln -s /path/to/statusline ~/.claude/plugins/statusline
 
 # Windows (as Administrator)
-mklink /D "C:\Users\YourName\.claude\plugins\statusline" "C:\path\to\claude-statusline"
+mklink /D "C:\Users\YourName\.claude\plugins\statusline" "C:\path\to\statusline"
 ```
 
 ## Configuration

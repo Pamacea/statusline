@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Claude Code Enhanced Statusline Script v0.7.0
+ * Claude Code Enhanced Statusline Script v0.7.1
  *
  * Features:
  * - Real-time token tracking from current session
@@ -82,7 +82,7 @@ function getCurrentSessionFile() {
 
   try {
     // Get current project path hash (match Claude's format)
-    // C:\Users\Yanis\Projects\-plugins\claude-statusline -> C--Users-Yanis-Projects--plugins-claude-statusline
+    // C:\Users\Yanis\Projects\-plugins\statusline -> C--Users-Yanis-Projects--plugins-statusline
     const cwd = process.cwd();
     const projectHash = cwd
       .replace(/:/g, '-')      // Replace colon with dash (C: -> C-)
@@ -390,7 +390,7 @@ function isVimModeActive() {
  * Le pourcentage de cache représente: quel pourcentage des tokens d'entrée
  * TOTAUX ont été servis depuis le cache (économies) ?
  *
- * Formule: cache_read / (input_tokens + cache_read) * 100
+ * Formule: cache_read / (input_tokens + cache_read + cache_creation) * 100
  *
  * Note: input_tokens n'inclut PAS cache_read_tokens dans l'API
  */
@@ -400,22 +400,23 @@ function getCachePercentage(sessionData) {
   }
 
   const cacheRead = sessionData.cacheReadTokens || 0;
+  const cacheCreation = sessionData.cacheCreationTokens || 0;
   const inputTokens = sessionData.inputTokens || 0;
 
   // Si pas de tokens du tout
-  if (inputTokens === 0 && cacheRead === 0) {
+  if (inputTokens === 0 && cacheRead === 0 && cacheCreation === 0) {
     return 0;
   }
 
-  // Total des tokens d'entrée (incluant le cache)
-  const totalInputTokens = inputTokens + cacheRead;
+  // Total des tokens traités (input + lecture cache + création cache)
+  const totalTokens = inputTokens + cacheRead + cacheCreation;
 
-  if (totalInputTokens === 0) {
+  if (totalTokens === 0) {
     return 0;
   }
 
   // Pourcentage réel de tokens venant du cache
-  const percentage = (cacheRead / totalInputTokens) * 100;
+  const percentage = (cacheRead / totalTokens) * 100;
 
   return percentage;
 }
