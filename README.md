@@ -34,7 +34,7 @@ cp statusline-standalone.mjs ~/.claude/statusline.mjs
 - **📈 Progress Bar** - Dynamic colors: green → yellow → orange → red
 - **🎨 Model Version** - Clean display: "4.7" instead of "glm-4.7"
 - **🔄 Vim Mode Indicator** - Shows "Vim" (green) when active, "Normal" (gray) when inactive
-- **💾 Cache Percentage** - Display cached tokens with progress bar (C: 65.5%)
+- **💾 Cache Percentage** - Percentage of input tokens served from cache (C: 45.2% = 45.2% cache hit rate)
 - **🖥️ Cross-Platform** - Windows, macOS, Linux with full Unicode support
 
 ## Display Breakdown
@@ -163,6 +163,12 @@ Create `~/.claude/statusline.config.json` (optional):
 - **prefix**: Label prefix (default: `"C:"`)
 - **progressBar**: Progress bar configuration (length, style, color, background)
 - **colorThresholds**: Thresholds for color scaling (low: 30%, medium: 60%, high: 90%)
+
+**Understanding Cache Percentage:**
+- **Green (≥90%)**: Excellent cache hit rate - most tokens served from cache
+- **Yellow (≥60%)**: Moderate cache usage - some cache benefits
+- **Red (<60%)**: Low cache hit rate - minimal cache savings
+- **Example**: `C: 45.2%` means 45.2% of input tokens are cache hits (savings)
 
 ## License
 
