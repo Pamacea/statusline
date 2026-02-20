@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - 2026-02-20
+
+### Added
+
+- **Vim mode indicator** - Shows "Vim" (green) when active, "Normal" (gray) when inactive
+- **Cache percentage display** - Shows cached tokens with progress bar (C: 65.5%)
+- Configurable colors for vim mode (colorWhenActive, colorWhenInactive)
+- Cache progress bar with customizable style, color, and background
+- Support for multiple cache display formats: "percentage", "bar", or both
+- Customizable labels and prefixes for both indicators
+- Color thresholds for cache percentage (low: 30%, medium: 60%, high: 90%)
+- Full TypeScript interfaces for `VimConfig` and `CacheConfig`
+
+### Changed
+
+- Enhanced `RawStatuslineData` interface with `vimModeActive` and `cachePercentage` fields
+- Added `formatVimMode()` and `formatCachePercentage()` to formatters
+- Integrated vim and cache indicators into render pipeline
+- Updated default configuration to include vim and cache settings
+
+### Fixed
+
+- Proper color mapping for all available color options
+- Graceful handling when cache data is unavailable (null returns empty string)
+- Vim mode only displays when enabled in configuration
+
+---
+
 ## [0.6.2] - 2025-02-19
 
 ### Added

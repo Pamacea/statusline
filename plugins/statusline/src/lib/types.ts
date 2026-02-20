@@ -79,12 +79,14 @@ export interface RawStatuslineData {
   durationMs: number;
   contextTokens: number | null;
   contextPercentage: number | null;
+  cachePercentage?: number | null;
   usageLimits?: {
     five_hour: UsageLimit | null;
     seven_day: UsageLimit | null;
   };
   periodCost?: number;
   todayCost?: number;
+  vimModeActive?: boolean;
 }
 
 /**
@@ -257,6 +259,60 @@ export interface DailySpendConfig {
 }
 
 /**
+ * Vim mode configuration
+ */
+export interface VimConfig {
+  enabled: boolean;
+  showLabel: boolean;
+  activeText: string;
+  inactiveText: string;
+  colorWhenActive: string;
+  colorWhenInactive: string;
+}
+
+/**
+ * Vim mode state type
+ */
+export type VimModeState = 'active' | 'inactive' | null;
+
+/**
+ * Cache progress bar configuration
+ */
+export interface CacheProgressBarConfig {
+  enabled: boolean;
+  length: 5 | 10 | 15;
+  style: ProgressBarStyle;
+  color: ProgressBarColor;
+  background: ProgressBarBackground;
+}
+
+/**
+ * Cache color thresholds
+ */
+export interface CacheColorThresholds {
+  low: number;
+  medium: number;
+  high: number;
+}
+
+/**
+ * Cache percentage format options
+ */
+export type CacheFormat = "percentage" | "bar";
+
+/**
+ * Cache configuration
+ */
+export interface CacheConfig {
+  enabled: boolean;
+  showLabel: boolean;
+  format: CacheFormat;
+  prefix: string;
+  progressBar: CacheProgressBarConfig;
+  colorThresholds: CacheColorThresholds;
+}
+
+/**
  * Main configuration interface
  */
 export interface StatuslineConfig {
@@ -274,6 +330,8 @@ export interface StatuslineConfig {
   limits: LimitsConfig;
   weeklyUsage: WeeklyUsageConfig;
   dailySpend: DailySpendConfig;
+  vim?: VimConfig;
+  cache?: CacheConfig;
 }
 
 /**
@@ -313,4 +371,5 @@ export interface Colors {
   strikethrough: ColorFunction;
   reset: ColorFunction;
   inverse: ColorFunction;
+  [key: string]: ColorFunction; // Allow string indexing for dynamic color access
 }

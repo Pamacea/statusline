@@ -8,12 +8,14 @@
 import type { StatuslineConfig } from "./types.js";
 import {
   colors,
+  formatCachePercentage,
   formatCost,
   formatDuration,
   formatPath,
   formatProgressBar,
   formatResetTime,
   formatTokens,
+  formatVimMode,
 } from "./formatters.js";
 
 /**
@@ -73,6 +75,8 @@ export interface RawStatuslineData {
   };
   periodCost?: number;
   todayCost?: number;
+  vimModeActive?: boolean;
+  cachePercentage?: number | null;
 }
 
 // Legacy interface for backwards compatibility
@@ -471,6 +475,38 @@ export function renderStatuslineRaw(
   const dailyPart = formatDailyPart(data.todayCost ?? 0, config.dailySpend);
 
   if (dailyPart) sections.push(dailyPart);
+
+  // Vim mode indicator
+  if (config.vim?.enabled) {
+    const vimPart = formatVimMode(
+      data.vimModeActive || false,
+      {
+        enabled: config.vim.enabled,
+        showLabel: config.vim.showLabel,
+        activeText: config.vim.activeText,
+        inactiveText: config.vim.inactiveText,
+        colorWhenActive: config.vim.colorWhenActive,
+        colorWhenInactive: config.vim.colorWhenInactive,
+      },
+    );
+    if (vimPart) sections.push(vimPart);
+  }
+
+  // Cache percentage indicator
+  if (config.cache?.enabled) {
+    const cachePart = formatCachePercentage(
+      data.cachePercentage || null,
+      {
+        enabled: config.cache.enabled,
+        showLabel: config.cache.showLabel,
+        format: config.cache.format,
+        prefix: config.cache.prefix,
+        progressBar: config.cache.progressBar,
+        colorThresholds: config.cache.colorThresholds,
+      },
+    );
+    if (cachePart) sections.push(cachePart);
+  }
 
   const output = sections.join(` ${sep} `);
 

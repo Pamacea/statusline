@@ -2,8 +2,8 @@
  * Progress bar rendering utilities for Statusline plugin
  */
 
-import type { ProgressBarSegment } from "../../src/types.ts";
-import { PROGRESS_CHARS, ANSI_COLORS } from "../../src/types.ts";
+import type { ProgressBarSegment } from "../../src/lib/types.ts";
+import { PROGRESS_CHARS, ANSI_COLORS } from "../../src/lib/types.ts";
 
 /**
  * Create progress bar segment

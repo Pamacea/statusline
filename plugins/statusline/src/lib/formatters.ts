@@ -5,12 +5,14 @@
 import { homedir } from "os";
 import { sep } from "path";
 import type {
+  CacheConfig,
   CostFormat,
   PathDisplayMode,
   ProgressBarBackground,
   ProgressBarColor,
   ProgressBarStyle,
   StatuslineConfig,
+  VimConfig,
 } from "./types.js";
 import { colors } from "./colors.js";
 
@@ -332,4 +334,111 @@ export function formatProgressBar({
   }
 
   return formatProgressBarFilled(percentage, length, colorMode, background);
+}
+
+/**
+ * Format vim mode indicator
+ *
+ * @param isActive - Whether vim mode is currently active
+ * @param config - Vim configuration options
+ * @returns Formatted vim mode string or empty string if disabled
+ *
+ * @example
+ * ```ts
+ * formatVimMode(true, vimConfig) // Returns "Vim" (green)
+ * formatVimMode(false, vimConfig) // Returns "Normal" (gray)
+ * ```
+ */
+export function formatVimMode(
+  isActive: boolean,
+  config: VimConfig,
+): string {
+  if (!config.enabled) return "";
+
+  const text = isActive ? config.activeText : config.inactiveText;
+
+  // Helper to get color function by name
+  const getColor = (colorName: string): ColorFunction => {
+    const colorMap: Record<string, ColorFunction> = {
+      green: colors.green,
+      red: colors.red,
+      purple: colors.purple,
+      yellow: colors.yellow,
+      orange: colors.orange,
+      peach: colors.peach,
+      black: colors.black,
+      white: colors.white,
+      gray: colors.gray,
+      dimWhite: colors.dimWhite,
+      lightGray: colors.lightGray,
+      cyan: colors.cyan,
+      blue: colors.blue,
+      bold: colors.bold,
+      dim: colors.dim,
+      italic: colors.italic,
+      underline: colors.underline,
+    };
+    return colorMap[colorName] ?? colors.lightGray;
+  };
+
+  if (!config.showLabel) {
+    return isActive ? getColor(config.colorWhenActive)(text) : "";
+  }
+
+  if (isActive) {
+    return getColor(config.colorWhenActive)(text);
+  }
+
+  return getColor(config.colorWhenInactive)(text);
+}
+
+/**
+ * Format cache percentage indicator
+ *
+ * @param cachePercentage - Cache percentage (null if no data)
+ * @param config - Cache configuration options
+ * @returns Formatted cache percentage string or empty string if disabled/null
+ *
+ * @example
+ * ```ts
+ * formatCachePercentage(65.5, cacheConfig) // Returns "C: 65.5%" (green)
+ * formatCachePercentage(null, cacheConfig) // Returns ""
+ * ```
+ */
+export function formatCachePercentage(
+  cachePercentage: number | null,
+  config: CacheConfig,
+): string {
+  if (!config.enabled || cachePercentage === null) return "";
+
+  const parts: string[] = [];
+
+  // Prefix/Label
+  if (config.showLabel) {
+    parts.push(colors.gray(config.prefix));
+  }
+
+  // Determine display format
+  const showBar = config.format === "bar" || config.format === "percentage";
+  const showPercentageValue = config.format === "percentage";
+
+  // Progress bar
+  if (showBar && config.progressBar.enabled) {
+    parts.push(
+      formatProgressBar({
+        percentage: cachePercentage,
+        length: config.progressBar.length,
+        style: config.progressBar.style,
+        colorMode: config.progressBar.color,
+        background: config.progressBar.background,
+      }),
+    );
+  }
+
+  // Percentage value
+  if (showPercentageValue) {
+    parts.push(`${colors.lightGray(cachePercentage.toFixed(1))}${colors.gray("%")}`);
+  }
+
+  return parts.length > 0 ? parts.join(" ") : "";
 }

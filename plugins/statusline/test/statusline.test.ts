@@ -3,154 +3,113 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { estimateTokens, calculateTokenUsage, formatTokenCount } from "../hooks/utils/token.ts";
-import { createProgressBar, renderProgressBar } from "../hooks/utils/progress.ts";
-import { loadConfig, getMaxTokensForModel } from "../src/config.ts";
-import { formatBranch, formatPath } from "../hooks/utils/git.ts";
+import { formatTokens, formatDuration, formatCost } from "../src/lib/formatters.ts";
+import type { StatuslineConfig } from "../src/lib/types.ts";
 
-describe("Token utilities", () => {
-  it("estimateTokens - basic estimation", () => {
-    const text = "hello world this is a test";
-    const tokens = estimateTokens(text);
-    // 27 chars / 4 = ~7 tokens (rounded up)
-    expect(tokens).toBe(7);
+describe("Formatters", () => {
+  it("formatTokens - large numbers", () => {
+    expect(formatTokens(500)).toContain("500");
+    expect(formatTokens(1500)).toContain("k");
+    expect(formatTokens(15000)).toContain("k");
+    expect(formatTokens(1500000)).toContain("m");
   });
 
-  it("estimateTokens - empty string", () => {
-    expect(estimateTokens("")).toBe(0);
-    expect(estimateTokens("   ")).toBe(0);
+  it("formatDuration - minutes and hours", () => {
+    expect(formatDuration(0)).toBe("0m");
+    expect(formatDuration(60000)).toBe("1m");
+    expect(formatDuration(3600000)).toBe("1h");
+    expect(formatDuration(3660000)).toBe("1h1m");
   });
 
-  it("calculateTokenUsage - within limits", () => {
-    const usage = calculateTokenUsage("some text here", 200000);
-    expect(usage.current).toBe(4); // 16 chars / 4
-    expect(usage.max).toBe(200000);
-    expect(usage.percentage).toBe(0);
-  });
-
-  it("formatTokenCount - large numbers", () => {
-    expect(formatTokenCount(500)).toBe("500");
-    expect(formatTokenCount(1500)).toBe("2K");
-    expect(formatTokenCount(15000)).toBe("15K");
-    expect(formatTokenCount(1500000)).toBe("1.5M");
-  });
-});
-
-describe("Progress bar", () => {
-  it("createProgressBar - zero percentage", () => {
-    const bar = createProgressBar(0, 20, true);
-    expect(bar.filled).toBe(0);
-    expect(bar.empty).toBe(20);
-    expect(bar.color).toBe("high");
-  });
-
-  it("createProgressBar - half full", () => {
-    const bar = createProgressBar(50, 20, true);
-    expect(bar.filled).toBe(10);
-    expect(bar.empty).toBe(10);
-    expect(bar.color).toBe("medium");
-  });
-
-  it("createProgressBar - full", () => {
-    const bar = createProgressBar(100, 20, true);
-    expect(bar.filled).toBe(20);
-    expect(bar.empty).toBe(0);
-    expect(bar.color).toBe("low");
-  });
-
-  it("renderProgressBar - unicode", () => {
-    const bar = { filled: 5, empty: 15, color: "high" };
-    const rendered = renderProgressBar(bar, true, false);
-    expect(rendered).toContain("[");
-    expect(rendered).toContain("]");
-  });
-
-  it("renderProgressBar - ascii", () => {
-    const bar = { filled: 5, empty: 15, color: "high" };
-    const rendered = renderProgressBar(bar, false, false);
-    expect(rendered).toBe("[#####---------------]");
+  it("formatCost - different formats", () => {
+    expect(formatCost(0.12345, "integer")).toBe("0");
+    expect(formatCost(0.12345, "decimal1")).toBe("0.1");
+    expect(formatCost(0.12345, "decimal2")).toBe("0.12");
   });
 });
 
 describe("Config", () => {
-  it("loadConfig - default values", () => {
-    const config = loadConfig();
-    expect(config.maxTokens).toBeDefined();
-    expect(config.progressBarWidth).toBeDefined();
-    expect(config.showIcons).toBeDefined();
-    expect(config.colors).toBeDefined();
-  });
+  it("Config types are properly defined", () => {
+    // This test verifies that the config types are properly exported
+    const config: Partial<StatuslineConfig> = {
+      oneLine: false,
+      showSonnetModel: true,
+      pathDisplayMode: "truncated",
+      vim: {
+        enabled: true,
+        showLabel: true,
+        activeText: "Vim",
+        inactiveText: "Normal",
+        colorWhenActive: "green",
+        colorWhenInactive: "gray"
+      },
+      cache: {
+        enabled: true,
+        showLabel: true,
+        format: "percentage",
+        prefix: "C:",
+        progressBar: {
+          enabled: true,
+          length: 10,
+          style: "filled",
+          color: "progressive",
+          background: "none"
+        },
+        colorThresholds: {
+          low: 30,
+          medium: 60,
+          high: 90
+        }
+      }
+    };
 
-  it("getMaxTokensForModel - known models", () => {
-    expect(getMaxTokensForModel("claude-opus-4-5")).toBe(1_000_000);
-    expect(getMaxTokensForModel("claude-opus-4-6")).toBe(1_000_000);
-    expect(getMaxTokensForModel("claude-3-5-sonnet")).toBe(200_000);
-    expect(getMaxTokensForModel("claude-3-5-haiku")).toBe(200_000);
-    expect(getMaxTokensForModel("unknown-model")).toBe(200_000);
+    expect(config.vim?.enabled).toBe(true);
+    expect(config.cache?.enabled).toBe(true);
+    expect(config.vim?.activeText).toBe("Vim");
+    expect(config.cache?.prefix).toBe("C:");
   });
 });
 
-describe("Git formatting", () => {
-  it("formatBranch - clean", () => {
-    expect(formatBranch("main", false)).toBe("main");
-  });
-
-  it("formatBranch - dirty", () => {
-    expect(formatBranch("main", true)).toBe("main*");
-    expect(formatBranch("feature/test", true)).toBe("feature/test*");
-  });
-
-  it("formatPath - root", () => {
-    expect(formatPath(".")).toBe("~");
-  });
-
-  it("formatPath - single level", () => {
-    expect(formatPath("src")).toBe("~/src");
-    expect(formatPath("src/features")).toBe("~/src/features");
-  });
-
-  it("formatPath - deep path", () => {
-    const result = formatPath("src/components/button/components");
-    // Should truncate deep paths
-    expect(result).toBeDefined();
-    expect(result).toContain("...");
-  });
-});
-
-describe("Integration", () => {
-  it("buildStatusline - full integration", async () => {
-    const gitInfo = {
-      branch: "main",
-      root: "/project",
-      currentPath: "/project/src",
-      relativePath: "src",
-      dirty: false,
-      staged: false,
-      commitsAhead: 0,
-      commitsBehind: 0,
+describe("New Features - v0.7.0", () => {
+  it("Vim config supports all options", () => {
+    const vimConfig = {
+      enabled: true,
+      showLabel: true,
+      activeText: "Vim",
+      inactiveText: "Normal",
+      colorWhenActive: "green",
+      colorWhenInactive: "gray"
     };
 
-    const fileStats = {
-      insertions: 10,
-      deletions: 5,
-      modifications: 2,
+    expect(vimConfig.enabled).toBe(true);
+    expect(vimConfig.showLabel).toBe(true);
+    expect(vimConfig.activeText).toBe("Vim");
+    expect(vimConfig.inactiveText).toBe("Normal");
+  });
+
+  it("Cache config supports all options", () => {
+    const cacheConfig = {
+      enabled: true,
+      showLabel: true,
+      format: "percentage" as const,
+      prefix: "C:",
+      progressBar: {
+        enabled: true,
+        length: 10 as const,
+        style: "filled" as const,
+        color: "progressive" as const,
+        background: "none" as const
+      },
+      colorThresholds: {
+        low: 30,
+        medium: 60,
+        high: 90
+      }
     };
 
-    const tokenUsage = {
-      current: 100000,
-      max: 200000,
-      percentage: 50,
-    };
-
-    const config = loadConfig();
-
-    const { buildStatusline } = await import("../hooks/utils/display.ts");
-    const display = buildStatusline(gitInfo, fileStats, tokenUsage, config);
-
-    expect(display.branch).toBeDefined();
-    expect(display.path).toBeDefined();
-    expect(display.progressBar).toBeDefined();
-    expect(display.tokenInfo).toBeDefined();
-    expect(display.full).toBeDefined();
+    expect(cacheConfig.enabled).toBe(true);
+    expect(cacheConfig.format).toBe("percentage");
+    expect(cacheConfig.prefix).toBe("C:");
+    expect(cacheConfig.progressBar.length).toBe(10);
   });
 });

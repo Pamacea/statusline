@@ -92,6 +92,32 @@ export const defaultConfig: StatuslineConfig = {
   dailySpend: {
     cost: { enabled: true, format: "decimal1" },
   },
+  vim: {
+    enabled: true,
+    showLabel: true,
+    activeText: "Vim",
+    inactiveText: "Normal",
+    colorWhenActive: "green",
+    colorWhenInactive: "gray",
+  },
+  cache: {
+    enabled: true,
+    showLabel: true,
+    format: "percentage",
+    prefix: "C:",
+    progressBar: {
+      enabled: true,
+      length: 10,
+      style: "filled",
+      color: "progressive",
+      background: "none",
+    },
+    colorThresholds: {
+      low: 30,
+      medium: 60,
+      high: 90,
+    },
+  },
 };
 
 /**

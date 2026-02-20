@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * Claude Code Enhanced Statusline Script v0.6.0
+ * Claude Code Enhanced Statusline Script v0.7.0
  *
  * Features:
  * - Real-time token tracking from current session
  * - Git branch with staged/unstaged changes
  * - Modified files count
- * - Model version display (S: 4.5)
+ * - Model version display (4.5)
  * - Cost tracking
  * - Enhanced progress bar
+ * - Vim mode indicator
+ * - Cache percentage display
  */
 
 import { execSync } from 'child_process';
@@ -20,10 +22,38 @@ const CONFIG = {
   maxTokens: 200000,
   progressBarWidth: 15,
   showModel: true,
+  showVimMode: true,
+  showCache: true,
   colors: {
     low: 'green',
     medium: 'yellow',
     high: 'red'
+  },
+  vim: {
+    enabled: true,
+    showLabel: true,
+    activeText: 'vim',
+    inactiveText: 'normal',
+    colorWhenActive: 'green',
+    colorWhenInactive: 'red'
+  },
+  cache: {
+    enabled: true,
+    showLabel: true,
+    format: 'percentage', // 'percentage', 'bar', or 'both'
+    prefix: 'C:',
+    progressBar: {
+      enabled: false, // Désactivé - on garde que le pourcentage
+      length: 10,
+      style: 'filled',
+      color: 'progressive',
+      background: 'none'
+    },
+    colorThresholds: {
+      low: 30,
+      medium: 60,
+      high: 90
+    }
   }
 };
 
@@ -122,7 +152,7 @@ function getSessionTokens() {
   const sessionFile = getCurrentSessionFile();
 
   if (!sessionFile || !existsSync(sessionFile)) {
-    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: 0 };
+    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: 0, inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
   }
 
   try {
@@ -145,7 +175,7 @@ function getSessionTokens() {
     }
 
     if (!lastData || !lastData.message?.usage) {
-      return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: getSessionDuration(sessionFile) };
+      return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: getSessionDuration(sessionFile), inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
     }
 
     const usage = lastData.message.usage;
@@ -153,6 +183,7 @@ function getSessionTokens() {
     // Calculate total tokens
     const inputTokens = usage.input_tokens || 0;
     const cacheReadTokens = usage.cache_read_input_tokens || 0;
+    const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
     const outputTokens = usage.output_tokens || 0;
     const totalTokens = inputTokens + cacheReadTokens + outputTokens;
 
@@ -167,10 +198,13 @@ function getSessionTokens() {
       max: CONFIG.maxTokens,
       cost: cost,
       model: model,
-      duration: getSessionDuration(sessionFile)
+      duration: getSessionDuration(sessionFile),
+      inputTokens: inputTokens,
+      cacheReadTokens: cacheReadTokens,
+      cacheCreationTokens: cacheCreationTokens
     };
   } catch (error) {
-    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: 0 };
+    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: 0, inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
   }
 }
 
@@ -343,6 +377,128 @@ function createProgressBar(percentage, width = CONFIG.progressBarWidth) {
 }
 
 /**
+ * Check if Vim mode is active
+ * Detects by checking if VIM or VIMRUNTIME environment variables are set
+ */
+function isVimModeActive() {
+  return !!(process.env.VIM || process.env.VIMRUNTIME);
+}
+
+/**
+ * Calculate cache percentage from session data
+ *
+ * Le pourcentage de cache représente: quel pourcentage des tokens d'entrée
+ * TOTAUX ont été servis depuis le cache (économies) ?
+ *
+ * Formule: cache_read / (input_tokens + cache_read) * 100
+ *
+ * Note: input_tokens n'inclut PAS cache_read_tokens dans l'API
+ */
+function getCachePercentage(sessionData) {
+  if (!sessionData) {
+    return null;
+  }
+
+  const cacheRead = sessionData.cacheReadTokens || 0;
+  const inputTokens = sessionData.inputTokens || 0;
+
+  // Si pas de tokens du tout
+  if (inputTokens === 0 && cacheRead === 0) {
+    return 0;
+  }
+
+  // Total des tokens d'entrée (incluant le cache)
+  const totalInputTokens = inputTokens + cacheRead;
+
+  if (totalInputTokens === 0) {
+    return 0;
+  }
+
+  // Pourcentage réel de tokens venant du cache
+  const percentage = (cacheRead / totalInputTokens) * 100;
+
+  return percentage;
+}
+
+/**
+ * Format vim mode indicator
+ */
+function formatVimMode(isActive) {
+  if (!CONFIG.vim.enabled) {
+    return '';
+  }
+
+  const activeText = CONFIG.vim.activeText;
+  const inactiveText = CONFIG.vim.inactiveText;
+
+  if (!CONFIG.vim.showLabel && !isActive) {
+    return '';
+  }
+
+  // Bold + couleur
+  const bold = '\x1b[1m';
+
+  if (isActive) {
+    const colorCode = CONFIG.vim.colorWhenActive === 'green' ? '\x1b[92m' :
+                      CONFIG.vim.colorWhenActive === 'red' ? '\x1b[91m' :
+                      CONFIG.vim.colorWhenActive === 'yellow' ? '\x1b[93m' :
+                      CONFIG.vim.colorWhenActive === 'gray' ? '\x1b[90m' :
+                      '\x1b[92m';
+    return `${bold}${colorCode}${activeText}\x1b[0m`;
+  }
+
+  const colorCode = CONFIG.vim.colorWhenInactive === 'green' ? '\x1b[92m' :
+                    CONFIG.vim.colorWhenInactive === 'red' ? '\x1b[91m' :
+                    CONFIG.vim.colorWhenInactive === 'yellow' ? '\x1b[93m' :
+                    CONFIG.vim.colorWhenInactive === 'gray' ? '\x1b[90m' :
+                    '\x1b[90m';
+  return `${bold}${colorCode}${inactiveText}\x1b[0m`;
+}
+
+/**
+ * Format cache percentage indicator
+ */
+function formatCachePercentage(cachePercentage) {
+  if (!CONFIG.cache.enabled || cachePercentage === null || cachePercentage === undefined) {
+    return '';
+  }
+
+  const parts = [];
+
+  // Prefix/Label en bold
+  if (CONFIG.cache.showLabel) {
+    parts.push(`\x1b[1m\x1b[90m${CONFIG.cache.prefix}\x1b[0m`);
+  }
+
+  // Progress bar (désactivée pour l'instant)
+  if (CONFIG.cache.progressBar.enabled) {
+    parts.push(createProgressBar(cachePercentage, CONFIG.cache.progressBar.length));
+  }
+
+  // Percentage value avec couleur dynamique selon les seuils
+  if (CONFIG.cache.format === 'percentage' || CONFIG.cache.format === 'both') {
+    const displayValue = cachePercentage.toFixed(1);
+
+    // Déterminer la couleur selon le pourcentage
+    let colorCode;
+    const thresholds = CONFIG.cache.colorThresholds;
+
+    if (cachePercentage >= thresholds.high) {
+      colorCode = '\x1b[92m'; // green - haut niveau de cache (bon!)
+    } else if (cachePercentage >= thresholds.medium) {
+      colorCode = '\x1b[93m'; // yellow - moyen
+    } else {
+      colorCode = '\x1b[91m'; // red - faible niveau de cache
+    }
+
+    // Bold pour le pourcentage avec le symbole % en couleur
+    parts.push(`\x1b[1m${colorCode}${displayValue}%\x1b[0m`);
+  }
+
+  return parts.join(' ');
+}
+
+/**
  * Format git changes for display - enhanced v0.6.0
  */
 function formatGitChanges(gitInfo) {
@@ -398,7 +554,7 @@ function getProjectPath(gitInfo) {
 function main() {
   const gitInfo = getGitInfo();
   const sessionData = getSessionTokens();
-  const { current, max, cost, model, duration } = sessionData;
+  const { current, max, cost, model, duration, inputTokens, cacheReadTokens, cacheCreationTokens } = sessionData;
   const percentage = Math.min(100, Math.round((current / max) * 100));
 
   // Build statusline components
@@ -431,9 +587,22 @@ function main() {
     ? `\x1b[90m${formatDuration(duration)}\x1b[0m`
     : '';
 
+  // Vim mode indicator
+  const vimModeActive = isVimModeActive();
+  const vimDisplay = formatVimMode(vimModeActive);
+
+  // Cache percentage indicator
+  const cacheData = {
+    inputTokens: inputTokens,
+    cacheReadTokens: cacheReadTokens,
+    cacheCreationTokens: cacheCreationTokens
+  };
+  const cachePercentage = getCachePercentage(cacheData);
+  const cacheDisplay = formatCachePercentage(cachePercentage);
+
   // Build final statusline on ONE line with better separators
-  // New order: Branch ▸ Path ▸ Git changes ▸ Model ▸ Cost ▸ Progress ▸ Tokens ▸ Duration
-  const statusline =
+  // New order: Branch ▸ Path ▸ Git changes ▸ Model ▸ Cost ▸ Progress ▸ Tokens ▸ Vim ▸ Cache ▸ Duration
+  let statusline =
     `\x1b[1m\x1b[97m${branch}${dirtyMarker}\x1b[0m` +
     ` \x1b[90m▸\x1b[0m ` +
     `\x1b[90m${projectPath}\x1b[0m` +
@@ -443,8 +612,22 @@ function main() {
     ` \x1b[90m▸\x1b[0m ` +
     progressBar +
     ` \x1b[90m▸\x1b[0m ` +
-    `\x1b[1m${percentage}% (${currentDisplay}/${maxDisplay})\x1b[0m` +
-    (durationDisplay ? ` \x1b[90m▸\x1b[0m ${durationDisplay}` : '');
+    `\x1b[1m${percentage}% (${currentDisplay}/${maxDisplay})\x1b[0m`;
+
+  // Add vim mode indicator if enabled and available
+  if (vimDisplay) {
+    statusline += ` \x1b[90m▸\x1b[0m ${vimDisplay}`;
+  }
+
+  // Add cache indicator if enabled and available
+  if (cacheDisplay) {
+    statusline += ` \x1b[90m▸\x1b[0m ${cacheDisplay}`;
+  }
+
+  // Add duration display at the end
+  if (durationDisplay) {
+    statusline += ` \x1b[90m▸\x1b[0m ${durationDisplay}`;
+  }
 
   // Output to stdout
   console.log(statusline);

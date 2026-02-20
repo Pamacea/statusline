@@ -1,6 +1,6 @@
 {
   "name": "claude-statusline-marketplace",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Claude Code Statusline Plugin - Enhanced with git status, cost tracking, and cross-platform support",
   "type": "module",
   "license": "MIT",
