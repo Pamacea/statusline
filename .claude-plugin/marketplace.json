@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "statusline",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Advanced statusline plugin for Claude Code with git branch, path, token context, cost tracking, and progress bar",
   "owner": {
     "name": "Yanis"
@@ -11,7 +11,7 @@
       "name": "statusline",
       "source": "./plugins/statusline",
       "description": "Advanced statusline plugin for Claude Code with git branch, path, token context, and progress bar. Run /setup after installation to configure.",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "author": {
         "name": "Yanis"
       },
