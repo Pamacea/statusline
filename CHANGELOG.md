@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.1] - 2026-03-14
+
+### Fixed
+
+- **CRITICAL**: Statusline now updates in real-time after each tool use
+- Added `PostToolUse` hook to trigger statusline updates after every tool execution
+- Fixed issue where statusline showed stale data (0%, 0/200K) during tool execution
+- Optimized transcript reading - now reads from end for faster token data retrieval
+- Fixed `writeFileSync` import error in PostToolUse hook
+
+### Added
+
+- `post-tool-use.ts` - New hook for real-time statusline updates
+- `post-tool-use.mjs` - Compiled JavaScript version of the hook
+- Enhanced hook configuration with `PostToolUse` matcher for all tools
+
+---
+
 ## [0.7.0] - 2026-02-20
 
 ### Added

@@ -1,5 +1,5 @@
 {
-  "description": "Statusline plugin - Display git branch, path, token context, and progress bar",
+  "description": "Statusline plugin - Display git branch, path, token context, and progress bar with real-time updates",
   "hooks": {
     "SessionStart": [
       {
@@ -19,6 +19,19 @@
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit.mjs",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use.mjs",
+            "timeout": 5,
+            "runInBackground": true
           }
         ]
       }
