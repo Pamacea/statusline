@@ -202,4 +202,147 @@ export function loadConfigSync(): StatuslineConfig {
   return defaultConfig;
 }
 
+/**
+ * Model context window sizes (in tokens)
+ * Maps model ID patterns to their context window size
+ */
+const MODEL_CONTEXT_SIZES: Record<string, number> = {
+  // Claude Opus 4.6 — 1M context
+  "claude-opus-4-6": 1000000,
+  "claude-opus-4-6[1m]": 1000000,
+  // Claude Opus 4.5 — 200k default, 1M with [1m]
+  "claude-opus-4-5": 200000,
+  "claude-opus-4-5[1m]": 1000000,
+  // Claude Sonnet 4.6 — 200k default, 1M with [1m]
+  "claude-sonnet-4-6": 200000,
+  "claude-sonnet-4-6[1m]": 1000000,
+  // Claude Sonnet 4.5 — 200k
+  "claude-sonnet-4-5": 200000,
+  // Claude Haiku 4.5 — 200k
+  "claude-haiku-4-5": 200000,
+  // GLM 5
+  "glm-5": 200000,
+  "glm-5-plus": 200000,
+  // GLM 4 — 200k
+  "glm-4": 200000,
+  "glm-4-plus": 200000,
+  "glm-4-long": 1000000,
+  "glm-4.7": 200000,
+};
+
+/**
+ * Model pricing (USD per million tokens)
+ * { input: $/M input, output: $/M output }
+ */
+interface ModelPricing {
+  input: number;
+  output: number;
+}
+
+const MODEL_PRICING: Record<string, ModelPricing> = {
+  // Claude Opus — $15/M input, $75/M output
+  "claude-opus-4-6": { input: 15, output: 75 },
+  "claude-opus-4-5": { input: 15, output: 75 },
+  // Claude Sonnet — $3/M input, $15/M output
+  "claude-sonnet-4-6": { input: 3, output: 15 },
+  "claude-sonnet-4-5": { input: 3, output: 15 },
+  // Claude Haiku — $0.80/M input, $4/M output
+  "claude-haiku-4-5": { input: 0.8, output: 4 },
+  // GLM 5
+  "glm-5": { input: 0.5, output: 2 },
+  "glm-5-plus": { input: 1, output: 4 },
+  // GLM 4
+  "glm-4": { input: 0.4, output: 1.6 },
+  "glm-4-plus": { input: 0.5, output: 2 },
+  "glm-4-long": { input: 0.4, output: 1.6 },
+  "glm-4.7": { input: 0.5, output: 2 },
+};
+
+const DEFAULT_PRICING: ModelPricing = { input: 3, output: 15 };
+
+/**
+ * Resolve pricing from model identifier
+ */
+export function resolveModelPricing(modelId: string): ModelPricing {
+  // Exact match
+  if (MODEL_PRICING[modelId]) return MODEL_PRICING[modelId];
+
+  // Strip [1m] suffix for pricing lookup
+  const cleanId = modelId.replace(/\[1m\]/, "");
+  if (MODEL_PRICING[cleanId]) return MODEL_PRICING[cleanId];
+
+  // Prefix match
+  for (const [key, pricing] of Object.entries(MODEL_PRICING)) {
+    if (modelId.startsWith(key)) return pricing;
+  }
+
+  // Pattern-based fallback
+  if (modelId.includes("opus")) return { input: 15, output: 75 };
+  if (modelId.includes("haiku")) return { input: 0.8, output: 4 };
+  if (modelId.includes("sonnet")) return { input: 3, output: 15 };
+  if (modelId.includes("glm-5-plus")) return { input: 1, output: 4 };
+  if (modelId.includes("glm-5")) return { input: 0.5, output: 2 };
+  if (modelId.includes("glm")) return { input: 0.5, output: 2 };
+
+  return DEFAULT_PRICING;
+}
+
+/**
+ * Resolve context window size from model identifier
+ * Handles exact matches, prefix matches, and [1m] suffix
+ */
+function resolveModelContextSize(modelId: string): number | null {
+  // Exact match
+  if (MODEL_CONTEXT_SIZES[modelId] !== undefined) {
+    return MODEL_CONTEXT_SIZES[modelId];
+  }
+
+  // Check for [1m] suffix pattern (e.g. "opus[1m]", "sonnet[1m]")
+  if (modelId.includes("[1m]")) {
+    return 1000000;
+  }
+
+  // Prefix match (e.g. "claude-opus-4-6-20260301" matches "claude-opus-4-6")
+  for (const [key, size] of Object.entries(MODEL_CONTEXT_SIZES)) {
+    if (modelId.startsWith(key)) {
+      return size;
+    }
+  }
+
+  // Pattern-based matching for model families
+  if (modelId.includes("opus-4-6") || modelId.includes("opus-4.6")) return 1000000;
+  if (modelId.includes("opus-4-5") || modelId.includes("opus-4.5")) return 200000;
+  if (modelId.includes("sonnet-4-6") || modelId.includes("sonnet-4.6")) return 200000;
+  if (modelId.includes("sonnet-4-5") || modelId.includes("sonnet-4.5")) return 200000;
+  if (modelId.includes("haiku")) return 200000;
+  if (modelId.includes("glm-4-long")) return 1000000;
+  if (modelId.includes("glm")) return 200000;
+
+  return null;
+}
+
+/**
+ * Update config based on detected model
+ * Adjusts maxContextTokens according to the model's context window
+ */
+export function updateConfigForModel(
+  config: StatuslineConfig,
+  model: string | { id: string; display_name?: string },
+): StatuslineConfig {
+  const modelId = typeof model === "string" ? model : model.id;
+  const contextSize = resolveModelContextSize(modelId);
+
+  if (contextSize === null) {
+    return config;
+  }
+
+  return {
+    ...config,
+    context: {
+      ...config.context,
+      maxContextTokens: contextSize,
+    },
+  };
+}
+
 export type { StatuslineConfig } from "./types.js";

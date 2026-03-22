@@ -23,7 +23,7 @@
 
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { getHomeDir, loadConfigSync } from "./lib/config.js";
+import { getHomeDir, loadConfigSync, updateConfigForModel } from "./lib/config.js";
 import { getContextDataSync } from "./lib/context.js";
 import { getGitStatusSync, type GitStatus } from "./lib/git.js";
 import { renderStatuslineRaw, type RawStatuslineData } from "./lib/render.js";
@@ -149,7 +149,12 @@ async function main() {
     input = getFallbackInput();
   }
 
-  const config = loadConfigSync();
+  let config = loadConfigSync();
+
+  // Update context window size based on model
+  if (input?.model) {
+    config = updateConfigForModel(config, input.model);
+  }
 
   const cwd = input?.workspace?.current_dir || process.cwd();
 

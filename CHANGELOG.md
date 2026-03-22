@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.2] - 2026-03-22
+
+### Fixed
+
+- **Context window**: Dynamic context size based on model (200k vs 1M) instead of hardcoded 200k
+- **Cost calculation**: Dynamic pricing per model instead of hardcoded Sonnet pricing
+- Implemented missing `updateConfigForModel()` function in `config.ts`
+
+### Added
+
+- Support for Claude 4.6 models (Opus, Sonnet) with correct context/pricing
+- Support for GLM 4 and GLM 5 models (context: 200k, GLM-4-long: 1M)
+- `resolveModelPricing()` for per-model cost calculation
+- `[1m]` suffix detection for 1M context window variants
+
+---
+
 ## [0.7.1] - 2026-03-14
 
 ### Fixed

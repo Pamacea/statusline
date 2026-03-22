@@ -31,6 +31,7 @@
   "context": {
     "usePayloadContextWindow": true,
     "maxContextTokens": 200000,
+
     "autocompactBufferTokens": 0,
     "useUsableContextOnly": false,
     "overheadTokens": 2000

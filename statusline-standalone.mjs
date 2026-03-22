@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * Claude Code Enhanced Statusline Script v0.7.1
+ * Claude Code Enhanced Statusline Script v0.9.0
  *
  * Features:
+ * - Dynamic context window (200k/1M) based on model detection
+ * - Support for Claude 4.5/4.6 (Opus, Sonnet, Haiku) + GLM models
  * - Real-time token tracking from current session
  * - Git branch with staged/unstaged changes
- * - Modified files count
- * - Model version display (4.5)
+ * - Model version display
  * - Cost tracking
  * - Enhanced progress bar
  * - Vim mode indicator
@@ -17,9 +18,70 @@ import { execSync } from 'child_process';
 import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
+// Model context window sizes
+const MODEL_CONTEXT_SIZES = {
+  "claude-opus-4-6": 1000000,
+  "claude-opus-4-5": 200000,
+  "claude-sonnet-4-6": 200000,
+  "claude-sonnet-4-5": 200000,
+  "claude-haiku-4-5": 200000,
+  "glm-5": 200000,
+  "glm-5-plus": 200000,
+  "glm-4": 200000,
+  "glm-4-plus": 200000,
+  "glm-4-long": 1000000,
+  "glm-4.7": 200000,
+};
+
+function getContextSizeForModel(modelId) {
+  if (!modelId) return 200000;
+  if (modelId.includes('[1m]')) return 1000000;
+  if (MODEL_CONTEXT_SIZES[modelId] !== undefined) return MODEL_CONTEXT_SIZES[modelId];
+  for (const [key, size] of Object.entries(MODEL_CONTEXT_SIZES)) {
+    if (modelId.startsWith(key)) return size;
+  }
+  if (modelId.includes('opus-4-6') || modelId.includes('opus-4.6')) return 1000000;
+  if (modelId.includes('opus-4-5') || modelId.includes('opus-4.5')) return 200000;
+  if (modelId.includes('sonnet')) return 200000;
+  if (modelId.includes('haiku')) return 200000;
+  if (modelId.includes('glm-4-long')) return 1000000;
+  if (modelId.includes('glm')) return 200000;
+  return 200000;
+}
+
+// Model pricing (USD per million tokens)
+const MODEL_PRICING = {
+  "claude-opus-4-6": { input: 15, output: 75 },
+  "claude-opus-4-5": { input: 15, output: 75 },
+  "claude-sonnet-4-6": { input: 3, output: 15 },
+  "claude-sonnet-4-5": { input: 3, output: 15 },
+  "claude-haiku-4-5": { input: 0.8, output: 4 },
+  "glm-5": { input: 0.5, output: 2 },
+  "glm-5-plus": { input: 1, output: 4 },
+  "glm-4": { input: 0.4, output: 1.6 },
+  "glm-4-plus": { input: 0.5, output: 2 },
+  "glm-4-long": { input: 0.4, output: 1.6 },
+  "glm-4.7": { input: 0.5, output: 2 },
+};
+
+function getPricingForModel(modelId) {
+  if (!modelId) return { input: 3, output: 15 };
+  const cleanId = modelId.replace(/\[1m\]/, '');
+  if (MODEL_PRICING[cleanId]) return MODEL_PRICING[cleanId];
+  for (const [key, pricing] of Object.entries(MODEL_PRICING)) {
+    if (modelId.startsWith(key)) return pricing;
+  }
+  if (modelId.includes('opus')) return { input: 15, output: 75 };
+  if (modelId.includes('haiku')) return { input: 0.8, output: 4 };
+  if (modelId.includes('sonnet')) return { input: 3, output: 15 };
+  if (modelId.includes('glm-5-plus')) return { input: 1, output: 4 };
+  if (modelId.includes('glm')) return { input: 0.5, output: 2 };
+  return { input: 3, output: 15 };
+}
+
 // Configuration
 const CONFIG = {
-  maxTokens: 200000,
+  maxTokens: 200000, // default, overridden dynamically per model
   progressBarWidth: 15,
   showModel: true,
   showVimMode: true,
@@ -152,7 +214,7 @@ function getSessionTokens() {
   const sessionFile = getCurrentSessionFile();
 
   if (!sessionFile || !existsSync(sessionFile)) {
-    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: 0, inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
+    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude', duration: 0, inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
   }
 
   try {
@@ -165,6 +227,7 @@ function getSessionTokens() {
     for (let i = lines.length - 1; i >= 0; i--) {
       try {
         const parsed = JSON.parse(lines[i]);
+        if (parsed.isSidechain === true || parsed.isApiErrorMessage === true) continue;
         if (parsed.message?.usage) {
           lastData = parsed;
           break;
@@ -175,7 +238,7 @@ function getSessionTokens() {
     }
 
     if (!lastData || !lastData.message?.usage) {
-      return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: getSessionDuration(sessionFile), inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
+      return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude', duration: getSessionDuration(sessionFile), inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
     }
 
     const usage = lastData.message.usage;
@@ -185,17 +248,21 @@ function getSessionTokens() {
     const cacheReadTokens = usage.cache_read_input_tokens || 0;
     const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
     const outputTokens = usage.output_tokens || 0;
-    const totalTokens = inputTokens + cacheReadTokens + outputTokens;
+    const totalTokens = inputTokens + cacheReadTokens + cacheCreationTokens;
 
     // Extract model name
-    const model = lastData.message.model || 'Claude Sonnet 4.5';
+    const model = lastData.message.model || 'Claude';
 
-    // Cost calculation (Sonnet 4.5 pricing: $3/M input, $15/M output)
-    const cost = ((inputTokens * 3) / 1000000) + ((outputTokens * 15) / 1000000);
+    // Dynamic max tokens based on detected model
+    const maxTokens = getContextSizeForModel(model);
+
+    // Dynamic cost calculation based on model
+    const pricing = getPricingForModel(model);
+    const cost = ((inputTokens * pricing.input) / 1000000) + ((outputTokens * pricing.output) / 1000000);
 
     return {
       current: totalTokens,
-      max: CONFIG.maxTokens,
+      max: maxTokens,
       cost: cost,
       model: model,
       duration: getSessionDuration(sessionFile),
@@ -204,7 +271,7 @@ function getSessionTokens() {
       cacheCreationTokens: cacheCreationTokens
     };
   } catch (error) {
-    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude Sonnet 4.5', duration: 0, inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
+    return { current: 0, max: CONFIG.maxTokens, cost: 0, model: 'Claude', duration: 0, inputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
   }
 }
 
